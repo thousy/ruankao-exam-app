@@ -1,0 +1,5 @@
+﻿*.zip
+*.rar
+*.pyc
+__pycache__/
+.agent/
