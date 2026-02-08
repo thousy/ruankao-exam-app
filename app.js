@@ -326,6 +326,17 @@ function renderQuestion() {
     const question = appState.questionList[appState.currentQuestionIndex];
     if (!question) return;
 
+    // 针对第 27 章使用专属高端嵌入页
+    if (appState.currentChapter === 'ch27') {
+        // 先去掉父容器的 padding，让 iframe 真正占满
+        elements.questionContainer.parentElement.style.padding = "0";
+        elements.questionContainer.innerHTML = `<iframe src="review_ch27_q4.html" style="width:100%; height:calc(100vh - 100px); border:none; background: transparent;"></iframe>`;
+        return;
+    } else {
+        // 其他章节恢复标准 padding
+        elements.questionContainer.parentElement.style.padding = "var(--spacing-lg) var(--spacing-xl)";
+    }
+
     appState.currentQuestion = question;
     appState.isAnswered = false;
 
