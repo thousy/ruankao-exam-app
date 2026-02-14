@@ -12,6 +12,9 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="image-styles.css">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#4e73df">
 </head>
 
 <body>
@@ -91,6 +94,16 @@
                     </svg>
                     <span>学习统计</span>
                 </a>
+                <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--color-bg-tertiary);">
+                    <a href="#" class="nav-item reset-btn" id="resetSystemBtn" style="color: #ff4d4f;">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                            <path
+                                d="M19 6V20C19 21.1046 18.1046 22 17 22H7C5.89543 22 5 21.1046 5 20V6M8 6V4C8 2.89543 8.89543 2 10 2H14C15.1046 2 16 2.89543 16 4V6M10 11V17M14 11V17"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                        </svg>
+                        <span>一键重置系统</span>
+                    </a>
+                </div>
             </nav>
 
             <div class="sidebar-footer">
@@ -311,6 +324,41 @@
                         <!-- 统计图表将通过 JavaScript 动态生成 -->
                     </div>
                 </div>
+
+                <!-- 设置视图 -->
+                <div class="view" id="settingsView">
+                    <h2 class="page-title">应用设置</h2>
+                    <div class="settings-list" style="margin-top: 24px;">
+                        <div class="settings-group"
+                            style="background: var(--color-bg-secondary); border-radius: var(--radius-lg); padding: 20px; border: 1px solid var(--color-border); margin-bottom: 20px;">
+                            <h3 style="margin-bottom: 15px; font-size: 1.1rem;">学习模式</h3>
+                            <div
+                                style="display: flex; background: var(--color-bg-tertiary); padding: 5px; border-radius: var(--radius-md);">
+                                <button class="mode-btn active" id="modePractice"
+                                    style="flex: 1; padding: 10px; border: none; border-radius: var(--radius-sm); font-weight: 500; cursor: pointer;">做题模式</button>
+                                <button class="mode-btn" id="modeRecite"
+                                    style="flex: 1; padding: 10px; border: none; border-radius: var(--radius-sm); font-weight: 500; cursor: pointer;">背题模式</button>
+                            </div>
+                            <p style="margin-top: 10px; font-size: 0.85rem; color: var(--color-text-secondary);">
+                                背题模式下，进入题目将直接显示答案和解析。</p>
+                        </div>
+
+                        <div class="settings-group"
+                            style="background: var(--color-bg-secondary); border-radius: var(--radius-lg); padding: 20px; border: 1px solid var(--color-border);">
+                            <h3 style="margin-bottom: 15px; font-size: 1.1rem;">字体调节</h3>
+                            <div style="display: flex; align-items: center; gap: 15px;">
+                                <span style="font-size: 0.8rem;">A-</span>
+                                <input type="range" id="fontSizeSlider" min="12" max="24" step="1" value="16"
+                                    style="flex: 1; height: 6px; border-radius: 3px; cursor: pointer;">
+                                <span style="font-size: 1.2rem;">A+</span>
+                                <span id="fontSizeDisplay"
+                                    style="min-width: 40px; font-weight: 600; color: var(--color-primary);">16px</span>
+                            </div>
+                            <p style="margin-top: 10px; font-size: 0.85rem; color: var(--color-text-secondary);">调节 App
+                                内题目和选项的显示字号。</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -356,6 +404,17 @@
     <script src="ocr_questions_ch5.js"></script>
     <script src="ocr_questions_ch6.js"></script>
     <script src="app.js"></script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW registered!', reg))
+                    .catch(err => console.log('SW failed!', err));
+            });
+        }
+    </script>
+
 </body>
 
 </html>
