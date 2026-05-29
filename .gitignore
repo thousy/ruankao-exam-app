@@ -5,11 +5,11 @@ __pycache__/
 .agent/
 
 # Android Gradle and IDE files
-Android_Project/.gradle/
-Android_Project/.idea/
-Android_Project/app/build/
-Android_Project/build/
-Android_Project/local.properties
+.gradle/
+.idea/
+app/build/
+build/
+local.properties
 
 # Temporary OCR and raw dump files
 *ocr_raw.txt
