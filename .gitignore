@@ -1,5 +1,23 @@
-﻿*.zip
+*.zip
 *.rar
 *.pyc
 __pycache__/
 .agent/
+
+# Android Gradle and IDE files
+Android_Project/.gradle/
+Android_Project/.idea/
+Android_Project/app/build/
+Android_Project/build/
+Android_Project/local.properties
+
+# Temporary OCR and raw dump files
+*ocr_raw.txt
+*raw_text.txt
+*raw_ocr_dump.txt
+ids.txt
+temp_text.txt
+
+# OS generated files
+.DS_Store
+Thumbs.db

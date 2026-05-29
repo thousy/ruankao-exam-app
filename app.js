@@ -609,11 +609,18 @@ function renderQuestion() {
             <!-- 右侧题目内容 -->
             <div class="question-main">
                 <div class="question-header">
-                    <div class="question-info" style="display: flex; gap: 15px; align-items: center; width: 100%;">
-                        <span style="font-weight: 600; font-size: 1.1rem;">题目 ${appState.currentQuestionIndex + 1} / ${appState.questionList.length}</span>
-                        <span style="color: ${difficultyColors[question.difficulty]}; font-size: 0.9rem;">
+                    <div class="question-info" style="display: flex; gap: 12px; align-items: center; width: 100%; color: var(--color-text-secondary); font-size: 0.9rem;">
+                        <span style="font-weight: 600; color: var(--color-text-primary);">${chapterTitle}</span>
+                        <span style="color: var(--color-text-tertiary);">|</span>
+                        <span style="font-weight: 500;">题目 ${appState.currentQuestionIndex + 1} / ${appState.questionList.length}</span>
+                        <span style="color: var(--color-text-tertiary);">|</span>
+                        <span style="color: ${difficultyColors[question.difficulty]};">
                             难度: ${difficultyText[question.difficulty]}
                         </span>
+                        ${['随机练习', '错题复习', '收藏复习'].includes(chapterTitle) ? `
+                        <span style="color: var(--color-text-tertiary);">|</span>
+                        <span style="color: var(--color-text-secondary);">${examData.chapters.find(c => c.id === question.chapterId)?.title || '未知章节'}</span>
+                        ` : ''}
                     </div>
                 </div>
                 
@@ -1356,8 +1363,85 @@ function initImageModal() {
     });
 }
 
+// ==================== 加载Excel题库并初始化 ====================
+async function loadExcelQuestionBank() {
+    try {
+        if (elements.loadingOverlay) elements.loadingOverlay.classList.add('active'); // 显示加载动画
+        
+        console.log('App: 正在下载题库 Excel 文件...');
+        const response = await fetch('questions_bank.xlsx');
+        if (!response.ok) {
+            throw new Error('网络响应失败: ' + response.statusText);
+        }
+        
+        const arrayBuffer = await response.arrayBuffer();
+        console.log('App: Excel 文件下载完成，正在解析...');
+        
+        // 解析 Excel
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        examData.questions = [];
+        
+        // 遍历所有 sheet
+        workbook.SheetNames.forEach(sheetName => {
+            const worksheet = workbook.Sheets[sheetName];
+            // 将 sheet 转换为 JSON格式 (第一行作为属性名)
+            const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+            
+            rows.forEach(row => {
+                // 还原选项数组
+                const opts = [];
+                if (row.option_A !== '') opts.push(String(row.option_A));
+                if (row.option_B !== '') opts.push(String(row.option_B));
+                if (row.option_C !== '') opts.push(String(row.option_C));
+                if (row.option_D !== '') opts.push(String(row.option_D));
+                
+                // 还原分类标签
+                const tagsStr = row.tags ? String(row.tags) : '';
+                const tags = tagsStr.split(',').filter(t => t.trim() !== '');
+                
+                let correctAnswer = row.correctAnswer;
+                if (correctAnswer !== '' && !isNaN(parseInt(correctAnswer))) {
+                    correctAnswer = parseInt(correctAnswer);
+                } else if (correctAnswer === '') {
+                    correctAnswer = 0;
+                }
+                
+                const q = {
+                    id: String(row.id),
+                    chapterId: String(row.chapterId),
+                    type: String(row.type || 'single'),
+                    difficulty: String(row.difficulty || 'medium'),
+                    content: String(row.content || ''),
+                    options: opts,
+                    correctAnswer: correctAnswer,
+                    explanation: String(row.explanation || ''),
+                    tags: tags,
+                    userAnswer: null,
+                    isCorrect: null,
+                    isFavorite: false,
+                    attemptCount: 0,
+                    lastAttemptDate: null
+                };
+                
+                examData.questions.push(q);
+            });
+        });
+        
+        console.log(`App: 题库解析完成，共从 ${workbook.SheetNames.length} 个 sheet 加载了 ${examData.questions.length} 题！`);
+        
+        // 初始化应用
+        initApp();
+        initImageModal();
+        
+    } catch (error) {
+        console.error('加载题库失败:', error);
+        alert('无法自动加载题库 (questions_bank.xlsx)。如果是直接双击打开本地 HTML 文件，浏览器会因安全策略阻止读取本地 Excel。\n请通过启动刚才生成的 server.js 服端 (node server.js)，然后访问 http://localhost:8080 即可打开软件自动加载。详细错误：' + error.message);
+    } finally {
+        if (elements.loadingOverlay) elements.loadingOverlay.classList.remove('active');
+    }
+}
+
 // ==================== 页面加载完成后初始化 ====================
 document.addEventListener('DOMContentLoaded', () => {
-    initApp();
-    initImageModal();
+    loadExcelQuestionBank();
 });
