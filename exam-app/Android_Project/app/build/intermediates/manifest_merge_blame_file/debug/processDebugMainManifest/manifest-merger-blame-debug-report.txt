@@ -1,0 +1,53 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.ruankao.examapp"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="21"
+9        android:targetSdkVersion="34" />
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:5:5-67
+11-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:5:22-64
+12
+13    <application
+13-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:7:5-22:19
+14        android:allowBackup="true"
+14-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:8:9-35
+15        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+15-->[androidx.core:core:1.0.0] C:\Users\admin\.gradle\caches\9.0.0\transforms\cc73c8746bc5067f11e2e89327b8a48c\transformed\core-1.0.0\AndroidManifest.xml:22:18-86
+16        android:debuggable="true"
+17        android:extractNativeLibs="true"
+18        android:icon="@mipmap/ic_launcher"
+18-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:9:9-43
+19        android:label="软考题库"
+19-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:10:9-29
+20        android:roundIcon="@mipmap/ic_launcher_round"
+20-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:11:9-54
+21        android:supportsRtl="true"
+21-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:12:9-35
+22        android:testOnly="true"
+23        android:theme="@android:style/Theme.NoTitleBar.Fullscreen" >
+23-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:13:9-67
+24        <activity
+24-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:14:9-21:20
+25            android:name="com.ruankao.examapp.MainActivity"
+25-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:15:13-41
+26            android:exported="true" >
+26-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:16:13-36
+27            <intent-filter>
+27-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:17:13-20:29
+28                <action android:name="android.intent.action.MAIN" />
+28-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:18:17-69
+28-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:18:25-66
+29
+30                <category android:name="android.intent.category.LAUNCHER" />
+30-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:19:17-77
+30-->F:\软考资料\202605\exam-app\Android_Project\app\src\main\AndroidManifest.xml:19:27-74
+31            </intent-filter>
+32        </activity>
+33    </application>
+34
+35</manifest>

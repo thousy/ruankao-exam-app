@@ -1,0 +1,26 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.ruankao.examapp-mergeDebugResources-6:/values-zh/values-zh.xml",
+            "map": [
+                {
+                    "source": "F:\\软考资料\\202605\\exam-app\\Android_Project\\app\\src\\main\\res\\values-zh\\strings.xml",
+                    "from": {
+                        "startLines": "1",
+                        "startColumns": "4",
+                        "startOffsets": "17",
+                        "endColumns": "40",
+                        "endOffsets": "53"
+                    },
+                    "to": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "40",
+                        "endOffsets": "91"
+                    }
+                }
+            ]
+        }
+    ]
+}
