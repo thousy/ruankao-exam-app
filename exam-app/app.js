@@ -299,7 +299,8 @@ function resetSystem() {
                 STORAGE_KEYS.MISTAKES,
                 STORAGE_KEYS.STUDY_STATS,
                 'softExamAppState',
-                'exam_custom_questions'
+                'exam_custom_questions',
+                'exam_custom_chapters'
             ];
 
             keysToRemove.forEach(key => localStorage.removeItem(key));
@@ -1493,65 +1494,101 @@ function handleExcelImport(e) {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
             const importedQuestions = [];
+            const importedChapters = [];
             
             // 遍历所有 sheet
             workbook.SheetNames.forEach(sheetName => {
+                const trimmedSheetName = sheetName.trim().toLowerCase();
                 const worksheet = workbook.Sheets[sheetName];
                 const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
                 
-                rows.forEach(row => {
-                    const opts = [];
-                    if (row.option_A !== '') opts.push(String(row.option_A));
-                    if (row.option_B !== '') opts.push(String(row.option_B));
-                    if (row.option_C !== '') opts.push(String(row.option_C));
-                    if (row.option_D !== '') opts.push(String(row.option_D));
-                    
-                    const tagsStr = row.tags ? String(row.tags) : '';
-                    const tags = tagsStr.split(',').filter(t => t.trim() !== '');
-                    
-                    let correctAnswer = row.correctAnswer;
-                    if (correctAnswer !== '' && !isNaN(parseInt(correctAnswer))) {
-                        correctAnswer = parseInt(correctAnswer);
-                    } else if (correctAnswer === '') {
-                        correctAnswer = 0;
-                    }
-                    
-                    const q = {
-                        id: String(row.id),
-                        chapterId: String(row.chapterId),
-                        type: String(row.type || 'single'),
-                        difficulty: String(row.difficulty || 'medium'),
-                        content: String(row.content || ''),
-                        options: opts,
-                        correctAnswer: correctAnswer,
-                        explanation: String(row.explanation || ''),
-                        tags: tags,
-                        userAnswer: null,
-                        isCorrect: null,
-                        isFavorite: false,
-                        attemptCount: 0,
-                        lastAttemptDate: null
-                    };
-                    
-                    if (row.image !== undefined && row.image !== '') q.image = String(row.image);
-                    if (row.explanationImage !== undefined && row.explanationImage !== '') q.explanationImage = String(row.explanationImage);
-                    
-                    importedQuestions.push(q);
-                });
+                if (trimmedSheetName === 'catalog') {
+                    // 1. 从 Excel 的 catalog 工作表动态导入章节列表
+                    rows.forEach(row => {
+                        if (row.tags) {
+                            importedChapters.push({
+                                id: String(row.tags).trim(),
+                                title: String(row.tag_contents || ''),
+                                description: '',
+                                totalQuestions: parseInt(row.num) || 0,
+                                completedQuestions: 0
+                            });
+                        }
+                    });
+                } else {
+                    // 2. 普通章节数据工作表解析题目
+                    rows.forEach(row => {
+                        const opts = [];
+                        if (row.option_A !== '') opts.push(String(row.option_A));
+                        if (row.option_B !== '') opts.push(String(row.option_B));
+                        if (row.option_C !== '') opts.push(String(row.option_C));
+                        if (row.option_D !== '') opts.push(String(row.option_D));
+                        
+                        const tagsStr = row.tags ? String(row.tags) : '';
+                        const tags = tagsStr.split(',').filter(t => t.trim() !== '');
+                        
+                        let correctAnswer = row.correctAnswer;
+                        if (correctAnswer !== '' && !isNaN(parseInt(correctAnswer))) {
+                            correctAnswer = parseInt(correctAnswer);
+                        } else if (correctAnswer === '') {
+                            correctAnswer = 0;
+                        }
+                        
+                        const q = {
+                            id: String(row.id),
+                            chapterId: String(row.chapterId),
+                            type: String(row.type || 'single'),
+                            difficulty: String(row.difficulty || 'medium'),
+                            content: String(row.content || ''),
+                            options: opts,
+                            correctAnswer: correctAnswer,
+                            explanation: String(row.explanation || ''),
+                            tags: tags,
+                            userAnswer: null,
+                            isCorrect: null,
+                            isFavorite: false,
+                            attemptCount: 0,
+                            lastAttemptDate: null
+                        };
+                        
+                        if (row.image !== undefined && row.image !== '') q.image = String(row.image);
+                        if (row.explanationImage !== undefined && row.explanationImage !== '') q.explanationImage = String(row.explanationImage);
+                        
+                        importedQuestions.push(q);
+                    });
+                }
             });
             
             if (importedQuestions.length === 0) {
                 throw new Error('未在 Excel 中解析出任何有效的题目数据！');
             }
             
-            // 保存至 localStorage 实现持久化
+            // 保存题目至 localStorage 实现持久化
             localStorage.setItem('exam_custom_questions', JSON.stringify(importedQuestions));
             examData.questions = importedQuestions;
             
-            // 重新计算章节题目数
-            examData.chapters.forEach(chapter => {
-                chapter.totalQuestions = examData.questions.filter(q => q.chapterId === chapter.id).length;
-            });
+            // 保存章节目录至 localStorage 实现持久化
+            if (importedChapters.length > 0) {
+                localStorage.setItem('exam_custom_chapters', JSON.stringify(importedChapters));
+                examData.chapters = importedChapters;
+                console.log(`App: 成功从 catalog 工作表导入了 ${importedChapters.length} 个自定义章节练习目录。`);
+            } else {
+                // 兜底：如果 Excel 中不包含 catalog 工作表，则从题目分布中动态推导章节目录
+                const uniqueChapterIds = [...new Set(examData.questions.map(q => q.chapterId))];
+                const generatedChapters = uniqueChapterIds.map(id => {
+                    const chNum = id.replace('ch', '');
+                    return {
+                        id: id,
+                        title: `第 ${chNum} 章 章节练习`,
+                        description: '',
+                        totalQuestions: examData.questions.filter(q => q.chapterId === id).length,
+                        completedQuestions: 0
+                    };
+                });
+                localStorage.setItem('exam_custom_chapters', JSON.stringify(generatedChapters));
+                examData.chapters = generatedChapters;
+                console.log(`App: Excel 未检测到 catalog 目录，已自动推导生成了 ${generatedChapters.length} 个章节练习目录。`);
+            }
             
             // 重新初始化用户进度数据
             const progress = getUserProgress();
@@ -1577,16 +1614,21 @@ async function loadExcelQuestionBank() {
     try {
         if (elements.loadingOverlay) elements.loadingOverlay.classList.add('active'); // 显示加载动画
         
-        // 1. 优先加载本地导入 of 自定义题库 (来自 localStorage 缓存)
         const customQuestions = localStorage.getItem('exam_custom_questions');
+        const customChapters = localStorage.getItem('exam_custom_chapters');
+        
+        // 1. 优先加载本地导入 of 自定义题库 (来自 localStorage 缓存)
         if (customQuestions) {
             console.log('App: 正在从本地缓存载入自定义题库...');
             examData.questions = JSON.parse(customQuestions);
-            
-            // 重新计算章节题目数
-            examData.chapters.forEach(chapter => {
-                chapter.totalQuestions = examData.questions.filter(q => q.chapterId === chapter.id).length;
-            });
+            if (customChapters) {
+                examData.chapters = JSON.parse(customChapters);
+            } else {
+                // 重新计算章节题目数
+                examData.chapters.forEach(chapter => {
+                    chapter.totalQuestions = examData.questions.filter(q => q.chapterId === chapter.id).length;
+                });
+            }
             
             initApp();
             initImageModal();
@@ -1596,11 +1638,14 @@ async function loadExcelQuestionBank() {
         // 2. 如果静态 JS 题库已经加载了数据，则不用从 EXCEL 调用显示，直接加载使用！
         if (examData.questions && examData.questions.length > 0) {
             console.log('App: 正在从内置静态 JS 文件载入题库数据, 共 ' + examData.questions.length + ' 题');
-            
-            // 重新计算章节题目数
-            examData.chapters.forEach(chapter => {
-                chapter.totalQuestions = examData.questions.filter(q => q.chapterId === chapter.id).length;
-            });
+            if (customChapters) {
+                examData.chapters = JSON.parse(customChapters);
+            } else {
+                // 重新计算章节题目数
+                examData.chapters.forEach(chapter => {
+                    chapter.totalQuestions = examData.questions.filter(q => q.chapterId === chapter.id).length;
+                });
+            }
             
             initApp();
             initImageModal();
@@ -1610,9 +1655,13 @@ async function loadExcelQuestionBank() {
         // 3. 在纯净版下，如果内置题库和缓存均为空，则以空数据初始化，不再从网络拉取 Excel
         console.log('App: 未检测到内置题库或本地缓存，以空题库状态初始化，等待用户导入。');
         examData.questions = [];
-        examData.chapters.forEach(chapter => {
-            chapter.totalQuestions = 0;
-        });
+        if (customChapters) {
+            examData.chapters = JSON.parse(customChapters);
+        } else {
+            examData.chapters.forEach(chapter => {
+                chapter.totalQuestions = 0;
+            });
+        }
         
         initApp();
         initImageModal();
