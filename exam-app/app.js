@@ -224,6 +224,27 @@ function bindEvents() {
             resetSystem();
         });
     }
+    const settingsResetBtn = document.getElementById('settingsResetBtn');
+    if (settingsResetBtn) {
+        settingsResetBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            resetSystem();
+        });
+    }
+
+    // 导入 Excel 题库
+    const excelFileInput = document.getElementById('excelFileInput');
+    if (excelFileInput) {
+        excelFileInput.addEventListener('change', handleExcelImport);
+    }
+    const homeExcelFileInput = document.getElementById('homeExcelFileInput');
+    if (homeExcelFileInput) {
+        homeExcelFileInput.addEventListener('change', handleExcelImport);
+    }
+    const settingsExcelFileInput = document.getElementById('settingsExcelFileInput');
+    if (settingsExcelFileInput) {
+        settingsExcelFileInput.addEventListener('change', handleExcelImport);
+    }
 
     // 设置相关事件
     safeAddListener(elements.settingsBtn, 'click', () => switchView('settings'));
@@ -270,7 +291,8 @@ function resetSystem() {
                 STORAGE_KEYS.FAVORITES,
                 STORAGE_KEYS.MISTAKES,
                 STORAGE_KEYS.STUDY_STATS,
-                'softExamAppState'
+                'softExamAppState',
+                'exam_custom_questions'
             ];
 
             keysToRemove.forEach(key => localStorage.removeItem(key));
@@ -1363,12 +1385,121 @@ function initImageModal() {
     });
 }
 
+// ==================== 手动导入 Excel 题库 ====================
+function handleExcelImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    showLoading();
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const importedQuestions = [];
+            
+            // 遍历所有 sheet
+            workbook.SheetNames.forEach(sheetName => {
+                const worksheet = workbook.Sheets[sheetName];
+                const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+                
+                rows.forEach(row => {
+                    const opts = [];
+                    if (row.option_A !== '') opts.push(String(row.option_A));
+                    if (row.option_B !== '') opts.push(String(row.option_B));
+                    if (row.option_C !== '') opts.push(String(row.option_C));
+                    if (row.option_D !== '') opts.push(String(row.option_D));
+                    
+                    const tagsStr = row.tags ? String(row.tags) : '';
+                    const tags = tagsStr.split(',').filter(t => t.trim() !== '');
+                    
+                    let correctAnswer = row.correctAnswer;
+                    if (correctAnswer !== '' && !isNaN(parseInt(correctAnswer))) {
+                        correctAnswer = parseInt(correctAnswer);
+                    } else if (correctAnswer === '') {
+                        correctAnswer = 0;
+                    }
+                    
+                    const q = {
+                        id: String(row.id),
+                        chapterId: String(row.chapterId),
+                        type: String(row.type || 'single'),
+                        difficulty: String(row.difficulty || 'medium'),
+                        content: String(row.content || ''),
+                        options: opts,
+                        correctAnswer: correctAnswer,
+                        explanation: String(row.explanation || ''),
+                        tags: tags,
+                        userAnswer: null,
+                        isCorrect: null,
+                        isFavorite: false,
+                        attemptCount: 0,
+                        lastAttemptDate: null
+                    };
+                    
+                    if (row.image !== undefined && row.image !== '') q.image = String(row.image);
+                    if (row.explanationImage !== undefined && row.explanationImage !== '') q.explanationImage = String(row.explanationImage);
+                    
+                    importedQuestions.push(q);
+                });
+            });
+            
+            if (importedQuestions.length === 0) {
+                throw new Error('未在 Excel 中解析出任何有效的题目数据！');
+            }
+            
+            // 保存至 localStorage 实现持久化
+            localStorage.setItem('exam_custom_questions', JSON.stringify(importedQuestions));
+            examData.questions = importedQuestions;
+            
+            // 重新计算章节题目数
+            examData.chapters.forEach(chapter => {
+                chapter.totalQuestions = examData.questions.filter(q => q.chapterId === chapter.id).length;
+            });
+            
+            // 重新初始化用户进度数据
+            const progress = getUserProgress();
+            localStorage.setItem(STORAGE_KEYS.USER_PROGRESS, JSON.stringify(progress));
+            
+            // 重新渲染页面数据
+            initApp();
+            showToast(`成功导入 ${importedQuestions.length} 道题目！`);
+            
+        } catch (error) {
+            console.error('导入 Excel 失败:', error);
+            alert('导入 Excel 题库失败！请确保您的 Excel 模板格式正确。详细错误：' + error.message);
+        } finally {
+            hideLoading();
+            e.target.value = '';
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
 // ==================== 加载Excel题库并初始化 ====================
 async function loadExcelQuestionBank() {
     try {
         if (elements.loadingOverlay) elements.loadingOverlay.classList.add('active'); // 显示加载动画
         
-        console.log('App: 正在下载题库 Excel 文件...');
+        // 1. 优先加载本地导入 of 自定义题库
+        const customQuestions = localStorage.getItem('exam_custom_questions');
+        if (customQuestions) {
+            console.log('App: 正在从本地缓存载入自定义题库...');
+            examData.questions = JSON.parse(customQuestions);
+            
+            // 重新计算章节题目数
+            examData.chapters.forEach(chapter => {
+                chapter.totalQuestions = examData.questions.filter(q => q.chapterId === chapter.id).length;
+            });
+            
+            initApp();
+            initImageModal();
+            return;
+        }
+        
+        // 2. 否则从服务器下载默认题库
+        console.log('App: 正在下载默认题库 Excel 文件...');
         const response = await fetch('questions_bank.xlsx');
         if (!response.ok) {
             throw new Error('网络响应失败: ' + response.statusText);
@@ -1384,18 +1515,15 @@ async function loadExcelQuestionBank() {
         // 遍历所有 sheet
         workbook.SheetNames.forEach(sheetName => {
             const worksheet = workbook.Sheets[sheetName];
-            // 将 sheet 转换为 JSON格式 (第一行作为属性名)
             const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
             
             rows.forEach(row => {
-                // 还原选项数组
                 const opts = [];
                 if (row.option_A !== '') opts.push(String(row.option_A));
                 if (row.option_B !== '') opts.push(String(row.option_B));
                 if (row.option_C !== '') opts.push(String(row.option_C));
                 if (row.option_D !== '') opts.push(String(row.option_D));
                 
-                // 还原分类标签
                 const tagsStr = row.tags ? String(row.tags) : '';
                 const tags = tagsStr.split(',').filter(t => t.trim() !== '');
                 
@@ -1428,6 +1556,11 @@ async function loadExcelQuestionBank() {
                 
                 examData.questions.push(q);
             });
+        });
+        
+        // 计算默认章节的题目数量
+        examData.chapters.forEach(chapter => {
+            chapter.totalQuestions = examData.questions.filter(q => q.chapterId === chapter.id).length;
         });
         
         console.log(`App: 题库解析完成，共从 ${workbook.SheetNames.length} 个 sheet 加载了 ${examData.questions.length} 题！`);

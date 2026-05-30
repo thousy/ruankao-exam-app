@@ -95,6 +95,16 @@
                     <span>学习统计</span>
                 </a>
                 <div style="margin-top: auto; padding-top: 20px; border-top: 1px solid var(--color-bg-tertiary);">
+                    <!-- Excel Import Button -->
+                    <label class="nav-item" style="cursor: pointer; color: var(--color-primary); display: flex; align-items: center; margin-bottom: 8px;">
+                        <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
+                            <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2Z" stroke="currentColor" stroke-width="2"/>
+                            <path d="M14 2V8H20" stroke="currentColor" stroke-width="2"/>
+                            <path d="M8 13H16M8 17H16" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                        <span>导入 Excel 题库</span>
+                        <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="display: none;" />
+                    </label>
                     <a href="#" class="nav-item reset-btn" id="resetSystemBtn" style="color: #ff4d4f;">
                         <svg class="nav-icon" viewBox="0 0 24 24" fill="none">
                             <path
@@ -223,6 +233,28 @@
                         </div>
                     </div>
 
+                    <!-- Excel 题库自主导入板块 -->
+                    <div class="excel-import-banner" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(67, 233, 123, 0.08) 100%); border: 1px dashed var(--color-accent); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div style="font-size: 2rem; background: rgba(102, 126, 234, 0.15); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--color-accent);">
+                                📊
+                            </div>
+                            <div>
+                                <h3 style="margin: 0; font-size: 1.05rem; font-weight: 600; color: var(--color-text-primary);">Excel 题库自主导入</h3>
+                                <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--color-text-secondary);">支持导入自定义的 Excel 题库文件（.xlsx），让复习更具针对性。</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn btn-outline" id="downloadTemplateBtn" style="display: flex; align-items: center; gap: 6px;" onclick="window.open('questions_bank.xlsx')">
+                                📥 下载模板
+                            </button>
+                            <label class="btn btn-primary" style="display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0;">
+                                📤 立即导入 Excel
+                                <input type="file" id="homeExcelFileInput" accept=".xlsx, .xls" style="display: none;" />
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="quick-actions">
                         <h3 class="section-title">快速开始</h3>
                         <div class="action-cards">
@@ -344,7 +376,7 @@
                         </div>
 
                         <div class="settings-group"
-                            style="background: var(--color-bg-secondary); border-radius: var(--radius-lg); padding: 20px; border: 1px solid var(--color-border);">
+                            style="background: var(--color-bg-secondary); border-radius: var(--radius-lg); padding: 20px; border: 1px solid var(--color-border); margin-bottom: 20px;">
                             <h3 style="margin-bottom: 15px; font-size: 1.1rem;">字体调节</h3>
                             <div style="display: flex; align-items: center; gap: 15px;">
                                 <span style="font-size: 0.8rem;">A-</span>
@@ -356,6 +388,28 @@
                             </div>
                             <p style="margin-top: 10px; font-size: 0.85rem; color: var(--color-text-secondary);">调节 App
                                 内题目和选项的显示字号。</p>
+                        </div>
+
+                        <div class="settings-group"
+                            style="background: var(--color-bg-secondary); border-radius: var(--radius-lg); padding: 20px; border: 1px solid var(--color-border);">
+                            <h3 style="margin-bottom: 15px; font-size: 1.1rem;">数据管理</h3>
+                            <div style="display: flex; flex-direction: column; gap: 12px;">
+                                <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                                    <label class="btn btn-primary" style="display: flex; align-items: center; gap: 6px; cursor: pointer; margin: 0; flex: 1; justify-content: center; min-width: 180px;">
+                                        <span>📤 导入自定义 Excel 题库</span>
+                                        <input type="file" id="settingsExcelFileInput" accept=".xlsx, .xls" style="display: none;" />
+                                    </label>
+                                    <button class="btn btn-outline" style="display: flex; align-items: center; gap: 6px; flex: 1; justify-content: center; min-width: 180px;" onclick="window.open('questions_bank.xlsx')">
+                                        <span>📥 下载题库模板</span>
+                                    </button>
+                                </div>
+                                <button class="btn btn-outline" id="settingsResetBtn" style="border-color: var(--color-error); color: var(--color-error); width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; background: transparent;">
+                                    <span>🗑️ 重置系统数据 (清空进度与自定义题库)</span>
+                                </button>
+                            </div>
+                            <p style="margin-top: 10px; font-size: 0.85rem; color: var(--color-text-secondary);">
+                                导入自定义 Excel 将会覆盖现有题目，重置系统可恢复默认题库。
+                            </p>
                         </div>
                     </div>
                 </div>
