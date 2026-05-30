@@ -1495,68 +1495,96 @@ function handleExcelImport(e) {
             const workbook = XLSX.read(data, { type: 'array' });
             const importedQuestions = [];
             const importedChapters = [];
+            const allowedChapters = new Set();
             
-            // 遍历所有 sheet
+            // 第一轮：搜寻并解析 catalog 章节主表，以汇总所有可用的章节标签（tags）
+            const catalogSheetName = workbook.SheetNames.find(name => name.trim().toLowerCase() === 'catalog');
+            const hasCatalog = (catalogSheetName !== undefined);
+            
+            if (hasCatalog) {
+                const worksheet = workbook.Sheets[catalogSheetName];
+                const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+                rows.forEach(row => {
+                    if (row.tags) {
+                        const tag = String(row.tags).trim();
+                        allowedChapters.add(tag);
+                        importedChapters.push({
+                            id: tag,
+                            title: String(row.tag_contents || ''),
+                            description: '',
+                            totalQuestions: parseInt(row.num) || 0,
+                            completedQuestions: 0
+                        });
+                    }
+                });
+                console.log(`App: 已成功搜寻并加载 catalog 注册表，注册的章节标签为:`, [...allowedChapters]);
+            }
+            
+            // 第二轮：遍历解析所有其他章节工作表，进行章节存在性拦截过滤
             workbook.SheetNames.forEach(sheetName => {
-                const trimmedSheetName = sheetName.trim().toLowerCase();
+                const trimmedSheetName = sheetName.trim();
+                const lowerSheetName = trimmedSheetName.toLowerCase();
+                
+                // 跳过已在第一轮处理过的目录页
+                if (lowerSheetName === 'catalog') {
+                    return;
+                }
+                
+                // 主拦截过滤器：如果 catalog 存在且当前工作表名未在 allowedChapters 中注册，则强行过滤不导入！
+                if (hasCatalog && !allowedChapters.has(trimmedSheetName)) {
+                    console.log(`App: 拦截并忽略工作表 "${trimmedSheetName}"，因为其未在 catalog 注册表中。`);
+                    return;
+                }
+                
                 const worksheet = workbook.Sheets[sheetName];
                 const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
                 
-                if (trimmedSheetName === 'catalog') {
-                    // 1. 从 Excel 的 catalog 工作表动态导入章节列表
-                    rows.forEach(row => {
-                        if (row.tags) {
-                            importedChapters.push({
-                                id: String(row.tags).trim(),
-                                title: String(row.tag_contents || ''),
-                                description: '',
-                                totalQuestions: parseInt(row.num) || 0,
-                                completedQuestions: 0
-                            });
-                        }
-                    });
-                } else {
-                    // 2. 普通章节数据工作表解析题目
-                    rows.forEach(row => {
-                        const opts = [];
-                        if (row.option_A !== '') opts.push(String(row.option_A));
-                        if (row.option_B !== '') opts.push(String(row.option_B));
-                        if (row.option_C !== '') opts.push(String(row.option_C));
-                        if (row.option_D !== '') opts.push(String(row.option_D));
-                        
-                        const tagsStr = row.tags ? String(row.tags) : '';
-                        const tags = tagsStr.split(',').filter(t => t.trim() !== '');
-                        
-                        let correctAnswer = row.correctAnswer;
-                        if (correctAnswer !== '' && !isNaN(parseInt(correctAnswer))) {
-                            correctAnswer = parseInt(correctAnswer);
-                        } else if (correctAnswer === '') {
-                            correctAnswer = 0;
-                        }
-                        
-                        const q = {
-                            id: String(row.id),
-                            chapterId: String(row.chapterId),
-                            type: String(row.type || 'single'),
-                            difficulty: String(row.difficulty || 'medium'),
-                            content: String(row.content || ''),
-                            options: opts,
-                            correctAnswer: correctAnswer,
-                            explanation: String(row.explanation || ''),
-                            tags: tags,
-                            userAnswer: null,
-                            isCorrect: null,
-                            isFavorite: false,
-                            attemptCount: 0,
-                            lastAttemptDate: null
-                        };
-                        
-                        if (row.image !== undefined && row.image !== '') q.image = String(row.image);
-                        if (row.explanationImage !== undefined && row.explanationImage !== '') q.explanationImage = String(row.explanationImage);
-                        
-                        importedQuestions.push(q);
-                    });
-                }
+                rows.forEach(row => {
+                    const rowChapterId = String(row.chapterId || '').trim();
+                    
+                    // 行级别拦截过滤器：如果行题目对应的 chapterId 未在 allowedChapters 中注册，也直接忽略！
+                    if (hasCatalog && !allowedChapters.has(rowChapterId)) {
+                        return;
+                    }
+                    
+                    const opts = [];
+                    if (row.option_A !== '') opts.push(String(row.option_A));
+                    if (row.option_B !== '') opts.push(String(row.option_B));
+                    if (row.option_C !== '') opts.push(String(row.option_C));
+                    if (row.option_D !== '') opts.push(String(row.option_D));
+                    
+                    const tagsStr = row.tags ? String(row.tags) : '';
+                    const tags = tagsStr.split(',').filter(t => t.trim() !== '');
+                    
+                    let correctAnswer = row.correctAnswer;
+                    if (correctAnswer !== '' && !isNaN(parseInt(correctAnswer))) {
+                        correctAnswer = parseInt(correctAnswer);
+                    } else if (correctAnswer === '') {
+                        correctAnswer = 0;
+                    }
+                    
+                    const q = {
+                        id: String(row.id),
+                        chapterId: rowChapterId,
+                        type: String(row.type || 'single'),
+                        difficulty: String(row.difficulty || 'medium'),
+                        content: String(row.content || ''),
+                        options: opts,
+                        correctAnswer: correctAnswer,
+                        explanation: String(row.explanation || ''),
+                        tags: tags,
+                        userAnswer: null,
+                        isCorrect: null,
+                        isFavorite: false,
+                        attemptCount: 0,
+                        lastAttemptDate: null
+                    };
+                    
+                    if (row.image !== undefined && row.image !== '') q.image = String(row.image);
+                    if (row.explanationImage !== undefined && row.explanationImage !== '') q.explanationImage = String(row.explanationImage);
+                    
+                    importedQuestions.push(q);
+                });
             });
             
             if (importedQuestions.length === 0) {
