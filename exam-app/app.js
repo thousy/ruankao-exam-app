@@ -1363,8 +1363,88 @@ function initImageModal() {
     });
 }
 
+// ==================== 加载Excel题库并初始化 ====================
+async function loadExcelQuestionBank() {
+    try {
+        if (elements.loadingOverlay) elements.loadingOverlay.classList.add('active'); // 显示加载动画
+        
+        console.log('App: 正在下载题库 Excel 文件...');
+        const response = await fetch('questions_bank.xlsx');
+        if (!response.ok) {
+            throw new Error('网络响应失败: ' + response.statusText);
+        }
+        
+        const arrayBuffer = await response.arrayBuffer();
+        console.log('App: Excel 文件下载完成，正在解析...');
+        
+        // 解析 Excel
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        examData.questions = [];
+        
+        // 遍历所有 sheet
+        workbook.SheetNames.forEach(sheetName => {
+            const worksheet = workbook.Sheets[sheetName];
+            // 将 sheet 转换为 JSON格式 (第一行作为属性名)
+            const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+            
+            rows.forEach(row => {
+                // 还原选项数组
+                const opts = [];
+                if (row.option_A !== '') opts.push(String(row.option_A));
+                if (row.option_B !== '') opts.push(String(row.option_B));
+                if (row.option_C !== '') opts.push(String(row.option_C));
+                if (row.option_D !== '') opts.push(String(row.option_D));
+                
+                // 还原分类标签
+                const tagsStr = row.tags ? String(row.tags) : '';
+                const tags = tagsStr.split(',').filter(t => t.trim() !== '');
+                
+                let correctAnswer = row.correctAnswer;
+                if (correctAnswer !== '' && !isNaN(parseInt(correctAnswer))) {
+                    correctAnswer = parseInt(correctAnswer);
+                } else if (correctAnswer === '') {
+                    correctAnswer = 0;
+                }
+                
+                const q = {
+                    id: String(row.id),
+                    chapterId: String(row.chapterId),
+                    type: String(row.type || 'single'),
+                    difficulty: String(row.difficulty || 'medium'),
+                    content: String(row.content || ''),
+                    options: opts,
+                    correctAnswer: correctAnswer,
+                    explanation: String(row.explanation || ''),
+                    tags: tags,
+                    userAnswer: null,
+                    isCorrect: null,
+                    isFavorite: false,
+                    attemptCount: 0,
+                    lastAttemptDate: null
+                };
+                
+                if (row.image !== undefined && row.image !== '') q.image = String(row.image);
+                if (row.explanationImage !== undefined && row.explanationImage !== '') q.explanationImage = String(row.explanationImage);
+                
+                examData.questions.push(q);
+            });
+        });
+        
+        console.log(`App: 题库解析完成，共从 ${workbook.SheetNames.length} 个 sheet 加载了 ${examData.questions.length} 题！`);
+        
+        // 初始化应用
+        initApp();
+        initImageModal();
+        
+    } catch (error) {
+        console.error('加载题库失败:', error);
+        alert('无法自动加载题库 (questions_bank.xlsx)。如果是直接双击打开本地 HTML 文件，浏览器会因安全策略阻止读取本地 Excel。\n请通过启动 Node 本地服务端，然后访问即可打开软件自动加载。详细错误：' + error.message);
+    } finally {
+        if (elements.loadingOverlay) elements.loadingOverlay.classList.remove('active');
+    }
+}
+
 // ==================== 页面加载完成后初始化 ====================
 document.addEventListener('DOMContentLoaded', () => {
-    initApp();
-    initImageModal();
+    loadExcelQuestionBank();
 });
