@@ -1704,6 +1704,14 @@ function handleExcelImport(e) {
 // ==================== 加载Excel题库并初始化 ====================
 async function loadExcelQuestionBank() {
     try {
+        // 安全防线：强制清除历史旧版的乱序 localStorage 缓存，让全新修复的有序版本即时生效！
+        if (localStorage.getItem('exam_db_version') !== '2.1') {
+            localStorage.removeItem('exam_custom_questions');
+            localStorage.removeItem('exam_custom_chapters');
+            localStorage.setItem('exam_db_version', '2.1');
+            console.log('App: 已成功检测并抹除旧版乱序缓存，升级对齐至有序的数据库 V2.1 版本！');
+        }
+        
         if (elements.loadingOverlay) elements.loadingOverlay.classList.add('active'); // 显示加载动画
         
         const customQuestions = localStorage.getItem('exam_custom_questions');
