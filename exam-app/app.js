@@ -1577,6 +1577,7 @@ function handleExcelImport(e) {
                         chapterId: rowChapterId,
                         type: String(row.type || 'single'),
                         difficulty: String(row.difficulty || 'medium'),
+                        label: row.label ? String(row.label).trim() : '',
                         content: String(row.content || ''),
                         options: opts,
                         slots: slots,
@@ -1647,7 +1648,7 @@ function handleExcelImport(e) {
                         : (String(subQ.correctAnswer).trim() || 'A');
                         
                     return {
-                        label: `考点 ${info.index}`,
+                        label: (subQ.label && subQ.label.trim() !== '') ? subQ.label : `考点 ${info.index}`,
                         options: subQ.options,
                         answer: correctAnsLetter
                     };
@@ -1723,11 +1724,11 @@ function handleExcelImport(e) {
 async function loadExcelQuestionBank() {
     try {
         // 安全防线：强制清除历史旧版的乱序 localStorage 缓存，让全新修复的有序版本即时生效！
-        if (localStorage.getItem('exam_db_version') !== '2.2') {
+        if (localStorage.getItem('exam_db_version') !== '2.3') {
             localStorage.removeItem('exam_custom_questions');
             localStorage.removeItem('exam_custom_chapters');
-            localStorage.setItem('exam_db_version', '2.2');
-            console.log('App: 已成功检测并抹除旧版乱序缓存，升级对齐至有序的数据库 V2.2 版本！');
+            localStorage.setItem('exam_db_version', '2.3');
+            console.log('App: 已成功检测并抹除旧版乱序缓存，升级对齐至有序的数据库 V2.3 版本！');
         }
         
         if (elements.loadingOverlay) elements.loadingOverlay.classList.add('active'); // 显示加载动画
