@@ -1600,23 +1600,34 @@ function handleExcelImport(e) {
             // 自动识别与合并多行平铺的多选题 (ID 格式如 ch6_25_1, ch6_25_2)
             const mergedQuestionsMap = new Map();
             const multiSlotTemp = new Map(); // parentId -> [ { index, q } ]
+            const orderedParentIds = []; // 记录题目在 Excel 中的原始物理顺序
             
             rawQuestions.forEach(q => {
+                let parentId = q.id;
+                let isFlatMulti = false;
+                
                 if (q.type === 'multi') {
-                    const match = q.id.match(/^(.+)_(\d+)$/);
+                    const match = q.id.match(/^([a-zA-Z0-9]+_\d+)_(\d+)$/);
                     if (match) {
-                        const parentId = match[1];
+                        parentId = match[1];
+                        isFlatMulti = true;
                         const slotIdx = parseInt(match[2]);
                         
                         if (!multiSlotTemp.has(parentId)) {
                             multiSlotTemp.set(parentId, []);
                         }
                         multiSlotTemp.get(parentId).push({ index: slotIdx, question: q });
-                        return; // 暂不放入独立题目池，后续由大题统一组装 slots
                     }
                 }
-                // 单选题或没有下划线后缀的多选题
-                mergedQuestionsMap.set(q.id, q);
+                
+                if (!orderedParentIds.includes(parentId)) {
+                    orderedParentIds.push(parentId);
+                }
+                
+                if (!isFlatMulti) {
+                    // 单选题或没有下划线后缀的多选题
+                    mergedQuestionsMap.set(q.id, q);
+                }
             });
             
             // 执行合并组装 slots
@@ -1649,7 +1660,14 @@ function handleExcelImport(e) {
                 mergedQuestionsMap.set(parentId, parentQ);
             });
             
-            const importedQuestions = Array.from(mergedQuestionsMap.values());
+            // 按照原始物理顺序组装最终题目数组
+            const importedQuestions = [];
+            orderedParentIds.forEach(parentId => {
+                const q = mergedQuestionsMap.get(parentId);
+                if (q) {
+                    importedQuestions.push(q);
+                }
+            });
             
             if (importedQuestions.length === 0) {
                 throw new Error('未在 Excel 中解析出任何有效的题目数据！');
@@ -1705,11 +1723,11 @@ function handleExcelImport(e) {
 async function loadExcelQuestionBank() {
     try {
         // 安全防线：强制清除历史旧版的乱序 localStorage 缓存，让全新修复的有序版本即时生效！
-        if (localStorage.getItem('exam_db_version') !== '2.1') {
+        if (localStorage.getItem('exam_db_version') !== '2.2') {
             localStorage.removeItem('exam_custom_questions');
             localStorage.removeItem('exam_custom_chapters');
-            localStorage.setItem('exam_db_version', '2.1');
-            console.log('App: 已成功检测并抹除旧版乱序缓存，升级对齐至有序的数据库 V2.1 版本！');
+            localStorage.setItem('exam_db_version', '2.2');
+            console.log('App: 已成功检测并抹除旧版乱序缓存，升级对齐至有序的数据库 V2.2 版本！');
         }
         
         if (elements.loadingOverlay) elements.loadingOverlay.classList.add('active'); // 显示加载动画
