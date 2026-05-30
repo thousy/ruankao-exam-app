@@ -1563,6 +1563,15 @@ function handleExcelImport(e) {
                         correctAnswer = 0;
                     }
                     
+                    let slots = null;
+                    if (row.slots) {
+                        try {
+                            slots = typeof row.slots === 'string' ? JSON.parse(row.slots) : row.slots;
+                        } catch (e) {
+                            console.error("解析 slots 失败:", e);
+                        }
+                    }
+                    
                     const q = {
                         id: String(row.id),
                         chapterId: rowChapterId,
@@ -1570,6 +1579,7 @@ function handleExcelImport(e) {
                         difficulty: String(row.difficulty || 'medium'),
                         content: String(row.content || ''),
                         options: opts,
+                        slots: slots,
                         correctAnswer: correctAnswer,
                         explanation: String(row.explanation || ''),
                         tags: tags,
