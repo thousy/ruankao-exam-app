@@ -60,7 +60,7 @@ const elements = {
     sidebar: document.getElementById('sidebar'),
     sidebarToggle: document.getElementById('sidebarToggle'),
     menuBtn: document.getElementById('menuBtn'),
-    navItems: document.querySelectorAll('.nav-item'),
+    navItems: document.querySelectorAll('.nav-item[data-view]'),
 
     // 顶部栏
     searchInput: document.getElementById('searchInput'),
