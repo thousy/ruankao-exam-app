@@ -231,6 +231,13 @@ function bindEvents() {
             resetSystem();
         });
     }
+    const exportToJsBtn = document.getElementById('exportToJsBtn');
+    if (exportToJsBtn) {
+        exportToJsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            exportQuestionsToJS();
+        });
+    }
 
     // 导入 Excel 题库
     const excelFileInput = document.getElementById('excelFileInput');
@@ -1417,6 +1424,42 @@ function initImageModal() {
     });
 }
 
+// ==================== 导出题库为 JS 数据文件 ====================
+function exportQuestionsToJS() {
+    try {
+        if (!examData.questions || examData.questions.length === 0) {
+            showToast('当前没有可以导出的题目数据');
+            return;
+        }
+        
+        // 按照原系统 JS 文件数据格式格式化生成
+        const jsContent = `// 导出的统一题库数据文件
+const ocrQuestions = ${JSON.stringify(examData.questions, null, 2)};
+
+if (typeof examData !== 'undefined') {
+  // 清除旧数据，以最新导入的数据重新注入
+  examData.questions = ocrQuestions;
+}
+`;
+        
+        // 创建文件 Blob 流下载
+        const blob = new Blob([jsContent], { type: 'application/javascript;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'ocr_questions.js';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showToast('成功导出 ocr_questions.js！请覆盖放置在同名项目文件中。');
+    } catch (e) {
+        console.error('导出 JS 失败:', e);
+        alert('导出 JS 失败: ' + e.message);
+    }
+}
+
 // ==================== 手动导入 Excel 题库 ====================
 function handleExcelImport(e) {
     const file = e.target.files[0];
@@ -1514,7 +1557,7 @@ async function loadExcelQuestionBank() {
     try {
         if (elements.loadingOverlay) elements.loadingOverlay.classList.add('active'); // 显示加载动画
         
-        // 1. 优先加载本地导入 of 自定义题库
+        // 1. 优先加载本地导入 of 自定义题库 (来自 localStorage 缓存)
         const customQuestions = localStorage.getItem('exam_custom_questions');
         if (customQuestions) {
             console.log('App: 正在从本地缓存载入自定义题库...');
@@ -1530,7 +1573,21 @@ async function loadExcelQuestionBank() {
             return;
         }
         
-        // 2. 否则从服务器下载默认题库
+        // 2. 如果静态 JS 题库已经加载了数据，则不用从 EXCEL 调用显示，直接加载使用！
+        if (examData.questions && examData.questions.length > 0) {
+            console.log('App: 正在从内置静态 JS 文件载入题库数据, 共 ' + examData.questions.length + ' 题');
+            
+            // 重新计算章节题目数
+            examData.chapters.forEach(chapter => {
+                chapter.totalQuestions = examData.questions.filter(q => q.chapterId === chapter.id).length;
+            });
+            
+            initApp();
+            initImageModal();
+            return;
+        }
+        
+        // 3. 否则从服务器下载默认题库 (兜底)
         console.log('App: 正在下载默认题库 Excel 文件...');
         const response = await fetch('questions_bank.xlsx');
         if (!response.ok) {
