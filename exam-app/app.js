@@ -1493,7 +1493,7 @@ function handleExcelImport(e) {
         try {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
-            const importedQuestions = [];
+            const rawQuestions = [];
             const importedChapters = [];
             const allowedChapters = new Set();
             
@@ -1593,9 +1593,63 @@ function handleExcelImport(e) {
                     if (row.image !== undefined && row.image !== '') q.image = String(row.image);
                     if (row.explanationImage !== undefined && row.explanationImage !== '') q.explanationImage = String(row.explanationImage);
                     
-                    importedQuestions.push(q);
+                    rawQuestions.push(q);
                 });
             });
+            
+            // 自动识别与合并多行平铺的多选题 (ID 格式如 ch6_25_1, ch6_25_2)
+            const mergedQuestionsMap = new Map();
+            const multiSlotTemp = new Map(); // parentId -> [ { index, q } ]
+            
+            rawQuestions.forEach(q => {
+                if (q.type === 'multi') {
+                    const match = q.id.match(/^(.+)_(\d+)$/);
+                    if (match) {
+                        const parentId = match[1];
+                        const slotIdx = parseInt(match[2]);
+                        
+                        if (!multiSlotTemp.has(parentId)) {
+                            multiSlotTemp.set(parentId, []);
+                        }
+                        multiSlotTemp.get(parentId).push({ index: slotIdx, question: q });
+                        return; // 暂不放入独立题目池，后续由大题统一组装 slots
+                    }
+                }
+                // 单选题或没有下划线后缀的多选题
+                mergedQuestionsMap.set(q.id, q);
+            });
+            
+            // 执行合并组装 slots
+            multiSlotTemp.forEach((slotsInfo, parentId) => {
+                // 按照空的序号顺序排列
+                slotsInfo.sort((a, b) => a.index - b.index);
+                
+                const firstSlotInfo = slotsInfo[0];
+                const parentQ = { ...firstSlotInfo.question };
+                parentQ.id = parentId; // 大题 ID 移除分支后缀
+                
+                parentQ.slots = slotsInfo.map(info => {
+                    const subQ = info.question;
+                    // 正确答案索引转换成英文字母，兼容 slots 选项校验机制
+                    const correctAnsLetter = typeof subQ.correctAnswer === 'number'
+                        ? String.fromCharCode(65 + subQ.correctAnswer)
+                        : (String(subQ.correctAnswer).trim() || 'A');
+                        
+                    return {
+                        label: `考点 ${info.index}`,
+                        options: subQ.options,
+                        answer: correctAnsLetter
+                    };
+                });
+                
+                // 将大题属性以第一个空的值兜底
+                parentQ.options = firstSlotInfo.question.options;
+                parentQ.correctAnswer = firstSlotInfo.question.correctAnswer;
+                
+                mergedQuestionsMap.set(parentId, parentQ);
+            });
+            
+            const importedQuestions = Array.from(mergedQuestionsMap.values());
             
             if (importedQuestions.length === 0) {
                 throw new Error('未在 Excel 中解析出任何有效的题目数据！');
